@@ -1,98 +1,43 @@
-from __future__ import annotations
-from typing import Optional, List
 import zmq
-import random
-import time
-import enum
+
+_NUMBER_OF_PARALLEL_RUNS = 4
 
 
-class Player(enum.Enum):
-    black = 1
-    white = 2
+def main():
+    context = zmq.Context()
 
-    @property
-    def opposite(self) -> Player:
-        return Player.black if self == Player.white else Player.white
+    # Client sends tasks to this port synchronously
+    sim_games_server = context.socket(zmq.REP)
+    sim_games_server.bind("tcp://*:5555")
 
+    # Socket to send each task to a worker node asynchronously
+    # There are multiple worker nodes
+    sender_to_workers = context.socket(zmq.PUSH)
+    sender_to_workers.bind("tcp://*:5557")
 
-class GameState:
-    def __init__(self, board: List[List[int]], next_player: Player, prev_state: GameState = None):
-        self.board = board
-        self.prev_state = prev_state
-        self.next_player = next_player
+    # Socket to talk to collector_server
+    print("Connecting to collector_server where solutions will be coming from...")
+    collector_server = context.socket(zmq.REQ)
+    collector_server.connect("tcp://localhost:5559")
 
-    def __eq__(self, other) -> bool:
-        if not isinstance(GameState, other):
-            return False
-        for i in range(len(self.board)):
-            if self.board[i] != other.board[i]:
-                return False
-        if self.next_player != other.next_player:
-            return False
-        if self.prev_state != other.prev_state:
-            return False
-        return True
+    while True:
+        # Wait for next set of tasks from client
+        task = sim_games_server.recv_pyobj()
 
-    def __str__(self) -> str:
-        dim = len(self.board)
-        signature = sum([sum(l) for l in self.board])
-        depth = 1
-        _gs = self.prev_state
-        while _gs is not None:
-            depth += 1
-            _gs = _gs.prev_state
-        return "{}x{} -> {}, {}, depth={}".format(dim, dim, signature, self.next_player, depth)
+        tasks_count = _NUMBER_OF_PARALLEL_RUNS
+        print("Received task".format(task))
+
+        # The first message is the count of tasks and signals start of batch
+        collector_server.send_string("{}".format(tasks_count))
+
+        for i in range(tasks_count):
+            print("Sending to worker a task")
+            sender_to_workers.send_pyobj(task)
+
+        solutions = collector_server.recv_pyobj()
+        print("Received {} solutions, sending back...".format(len(solutions)))
+        sim_games_server.send_pyobj(solutions)
 
 
-def create_dummy_game_state() -> GameState:
-    import random
-    list_template = [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]
-    board: List[List[int]] = []
-    for i in range(len(list_template)):
-        l1 = list_template.copy()
-        random.shuffle(l1)
-        board.append(l1)
-    return GameState(board, Player.black, None)
-
-
-def create_dummy_linked_game_states(n: int) -> GameState:
-    root: GameState = create_dummy_game_state()
-    for i in range(n - 1):
-        _gs: GameState = create_dummy_game_state()
-        _gs.next_player = _gs.next_player.opposite
-        _gs.prev_state = root
-        root = _gs
-    return root
-
-
-context = zmq.Context()
-
-# Socket to send messages on
-sender = context.socket(zmq.PUSH)
-sender.bind("tcp://*:5557")
-
-# Socket with direct access to the sink: used to syncronize start of batch
-sink = context.socket(zmq.PUSH)
-sink.connect("tcp://localhost:5558")
-
-print("Press Enter when the workers are ready: ")
-_ = input()
-print("Sending tasks to workers...")
-
-# The first message is "0" and signals start of batch
-sink.send(b'0')
-
-# Initialize random number generator
-random.seed()
-
-N = 1
-for task_nbr in range(N):
-
-    gs = Player.white
-    print(gs)
-    sender.send_pyobj(gs)
-
-print("Total expected cost: %s msec" % 100 * N)
-
-# Give 0MQ time to deliver
-time.sleep(1)
+if __name__ == '__main__':
+    main()

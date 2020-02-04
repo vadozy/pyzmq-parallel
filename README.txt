@@ -10,5 +10,17 @@ $ python taskwork.py
 
 $ python tasksink.py
 
-#
+# Prototype of how to send go rollouts:
+
+Terminal 1:
+$ python sim_games.py
+
+Terminals 2[, 3[, 4[, 5]]]:
+$ python sim_game_worker.py
+
+Terminal 6:
+$ python sim_games_collector.py
+
+Finally run the test on Terminal 0:
+$ python sim_games_tester.py
 

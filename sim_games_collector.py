@@ -1,29 +1,31 @@
-import sys
-import time
 import zmq
 
-context = zmq.Context()
 
-# Socket to receive messages on
-receiver = context.socket(zmq.PULL)
-receiver.bind("tcp://*:5558")
+def main():
+    # Client sends tasks to this port synchronously
+    context = zmq.Context()
+    collector_server = context.socket(zmq.REP)
+    collector_server.bind("tcp://*:5559")
 
-# Wait for start of batch
-s = receiver.recv()
+    # Socket to receive solutions on
+    receiver = context.socket(zmq.PULL)
+    receiver.bind("tcp://*:5558")
 
-# Start our clock now
-tstart = time.time()
+    while True:
+        solutions = []
+        # Received signal that the start of batch
+        tasks_count = int(collector_server.recv_string())
+        print("Collector received signal that {} tasks' solutions are coming soon...")
 
-# Process 100 confirmations
-for task_nbr in range(1):
-    sys.stdout.write(str(task_nbr))
-    s = receiver.recv()
-    if task_nbr % 10 == 0:
-        sys.stdout.write(':')
-    else:
-        sys.stdout.write('.')
-    sys.stdout.flush()
+        # Collect tasks solutions
+        for i in range(tasks_count):
+            s = receiver.recv_pyobj()
+            print("Received solution number {}".format(i + 1))
+            solutions.append(s)
 
-# Calculate and report duration of batch
-tend = time.time()
-print("Total elapsed time: %d msec" % ((tend - tstart) * 1000))
+        print("Sending all solutions to sim_games server")
+        collector_server.send_pyobj(solutions)
+
+
+if __name__ == '__main__':
+    main()

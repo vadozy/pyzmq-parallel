@@ -1,40 +1,34 @@
 from __future__ import annotations
-import sys
 import time
 import zmq
-import enum
+import random
+
+from sim_shared import Player, GameState
 
 
-class Player(enum.Enum):
-    black = 1
-    white = 2
+def main():
+    context = zmq.Context()
+    # Socket to receive messages on
+    receiver = context.socket(zmq.PULL)
+    receiver.connect("tcp://localhost:5557")
 
-    @property
-    def opposite(self) -> Player:
-        return Player.black if self == Player.white else Player.white
+    # Sockets to send solutions to
+    collector = context.socket(zmq.PUSH)
+    collector.connect("tcp://localhost:5558")
+
+    # Process tasks forever
+    while True:
+        task = receiver.recv_pyobj()
+        print("Received task")
+
+        # Do the work
+        time.sleep(0.1)  # seconds
+
+        solution = Player(random.randint(1, 2))
+
+        # Send results to collector
+        collector.send_pyobj(solution)
 
 
-context = zmq.Context()
-
-# Socket to receive messages on
-receiver = context.socket(zmq.PULL)
-receiver.connect("tcp://localhost:5557")
-
-# Socket to send messages to
-sender = context.socket(zmq.PUSH)
-sender.connect("tcp://localhost:5558")
-
-# Process tasks forever
-while True:
-    s = receiver.recv_pyobj()
-    sys.stdout.write(str(s))
-
-    # Simple progress indicator for the viewer
-    sys.stdout.write('.')
-    sys.stdout.flush()
-
-    # Do the work
-    time.sleep(100 * 0.001)
-
-    # Send results to sink
-    sender.send(b'')
+if __name__ == '__main__':
+    main()
