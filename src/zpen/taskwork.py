@@ -17,7 +17,7 @@ while True:
     s = receiver.recv()
 
     # Simple progress indicator for the viewer
-    sys.stdout.write('.')
+    sys.stdout.write('..')
     sys.stdout.flush()
 
     # Do the work

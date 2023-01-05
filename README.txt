@@ -1,26 +1,19 @@
-# Based on this:
-# Parallel processing model.
-# Fan out topology?
+Zero MQ sandbox
 
-$ python taskvent.py
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
 
-$ python taskwork.py
-$ python taskwork.py
-$ python taskwork.py
+-- Setting up venv
 
-$ python tasksink.py
+$ python -m venv venv
+$ . ./venv/bin/activate
+$ (venv) pip install --upgrade pip
+$ (venv) pip install -r requirements.txt
+$ (venv) pip install -e .
 
-# Prototype of how to send go rollouts:
+$ jupyter notebook
 
-Terminal 1:
-$ python sim_games.py
-
-Terminals 2[, 3[, 4[, 5]]]:
-$ python sim_game_worker.py
-
-Terminal 6:
-$ python sim_games_collector.py
-
-Finally run the test on Terminal 0:
-$ python sim_games_tester.py
-
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- When upgrading versions use this
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+$ . ./venv/bin/activate
+$ (venv) pip install -r requirements.txt --upgrade

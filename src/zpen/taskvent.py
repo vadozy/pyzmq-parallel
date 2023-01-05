@@ -8,7 +8,7 @@ context = zmq.Context()
 sender = context.socket(zmq.PUSH)
 sender.bind("tcp://*:5557")
 
-# Socket with direct access to the sink: used to syncronize start of batch
+# Socket with direct access to the sink: used to synchronize start of batch
 sink = context.socket(zmq.PUSH)
 sink.connect("tcp://localhost:5558")
 
@@ -26,12 +26,12 @@ random.seed()
 total_msec = 0
 for task_nbr in range(100):
     # Random workload from 1 to 100 msecs
-    workload = random.randint(50, 200)
+    workload = random.randint(1, 100)
     total_msec += workload
 
-    sender.send_string(u'%i' % workload)
+    sender.send_string(f"{workload}")
 
-print("Total expected cost: %s msec" % total_msec)
+print(f"Total expected cost: {total_msec} msec")
 
 # Give 0MQ time to deliver
 time.sleep(1)
